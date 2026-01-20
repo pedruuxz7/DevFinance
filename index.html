@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevFinance Pro | Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        :root { --bg-dark: #09090b; }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), rgba(255,255,255,0));
+            color: #fafafa;
+            min-height: 100vh;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-card {
+            background: rgba(24, 24, 27, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover { border-color: rgba(99, 102, 241, 0.3); }
+
+        .input-dark {
+            background: rgba(15, 15, 18, 0.8);
+            border: 1px solid #27272a;
+            color: #e4e4e7;
+            transition: all 0.2s ease;
+        }
+
+        .input-dark:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .balance-card-positive { background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(9, 9, 11, 0.6) 100%); border-color: rgba(16, 185, 129, 0.2); }
+        .balance-card-negative { background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(9, 9, 11, 0.6) 100%); border-color: rgba(239, 68, 68, 0.2); }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .tx-item { animation: slideIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
+            <div class="text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start gap-3 mb-2">
+                    <div class="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20 shadow-lg shadow-indigo-500/5">
+                        <i data-lucide="terminal" class="w-6 h-6 text-indigo-400"></i>
+                    </div>
+                    <span class="px-2 py-1 rounded-md bg-indigo-500/10 text-[10px] text-indigo-300 font-bold tracking-tighter border border-indigo-500/20">PRO v2.5</span>
+                </div>
+                <h1 class="text-4xl font-extrabold tracking-tight">Dev<span class="text-gradient">Finance</span></h1>
+                <p class="text-zinc-500 text-sm mt-1">Sua inteligência financeira com <span class="text-zinc-300 font-mono">50/30/20</span></p>
+            </div>
+            
+            <div class="flex gap-3 bg-zinc-900/50 p-1.5 rounded-2xl border border-white/5">
+                <button onclick="exportData()" class="px-4 py-2 rounded-xl hover:bg-zinc-800 transition-all text-xs font-semibold text-zinc-400 hover:text-white flex items-center gap-2">
+                    <i data-lucide="share-2" class="w-4 h-4"></i> Exportar
+                </button>
+                <button onclick="resetAll()" class="px-4 py-2 rounded-xl hover:bg-red-500/10 transition-all text-xs font-semibold text-zinc-400 hover:text-red-400 flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Limpar
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-4 space-y-6">
+                <section class="glass-card p-6 border-l-4 border-l-indigo-500">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-4">Configurar Renda</h3>
+                    <div class="relative group">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400 font-bold text-sm transition-colors group-focus-within:text-indigo-300">R$</span>
+                        <input type="number" id="salaryInput" oninput="updateDashboard()" 
+                            class="input-dark w-full pl-12 pr-4 py-4 rounded-2xl text-2xl font-bold mono" placeholder="0,00">
+                    </div>
+                </section>
+
+                <section class="glass-card p-6">
+                    <h3 class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-6">Nova Transação</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <input type="text" id="descInput" placeholder="Descrição (ex: Netflix)" class="input-dark w-full px-4 py-3.5 rounded-xl text-sm">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 text-xs">R$</span>
+                                <input type="number" id="valueInput" placeholder="0,00" class="input-dark w-full pl-8 pr-3 py-3.5 rounded-xl text-sm">
+                            </div>
+                            <select id="categoryInput" class="input-dark w-full px-3 py-3.5 rounded-xl text-sm cursor-pointer">
+                                <option value="essential">Essencial</option>
+                                <option value="leisure">Lazer</option>
+                                <option value="investment">Investir</option>
+                            </select>
+                        </div>
+
+                        <button onclick="addTransaction()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2">
+                            <i data-lucide="plus-circle" class="w-5 h-5"></i> Adicionar
+                        </button>
+                    </div>
+                </section>
+            </aside>
+
+            <div class="lg:col-span-8 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div id="balanceCard" class="glass-card p-6 flex flex-col justify-between min-h-[120px]">
+                        <p class="text-zinc-500 text-[10px] uppercase font-black tracking-widest">Saldo Livre</p>
+                        <h2 id="totalBalance" class="text-3xl font-bold mono mt-2 tracking-tighter">R$ 0,00</h2>
+                    </div>
+
+                    <div class="glass-card p-6 flex flex-col justify-between bg-zinc-900/20">
+                        <p class="text-zinc-500 text-[10px] uppercase font-black tracking-widest">Despesas</p>
+                        <h2 id="totalSpent" class="text-3xl font-bold mono mt-2 text-zinc-200 tracking-tighter">R$ 0,00</h2>
+                    </div>
+
+                    <div class="glass-card p-4 flex items-center gap-4">
+                        <div class="w-20 h-20">
+                             <canvas id="myChart"></canvas>
+                        </div>
+                        <div id="chart-legend" class="flex flex-col gap-1 flex-1"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Saúde Financeira</h3>
+                            <p class="text-xs text-zinc-500 uppercase tracking-tighter">Meta 50% Essencial | 30% Lazer | 20% Investimento</p>
+                        </div>
+                    </div>
+                    <div id="progress-bars" class="space-y-8"></div>
+                </div>
+
+                <div class="glass-card overflow-hidden">
+                    <div class="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                        <h3 class="text-[10px] font-black uppercase tracking-widest text-zinc-400">Últimos Lançamentos</h3>
+                        <span id="tx-count" class="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded-full border border-indigo-500/20 mono">0 itens</span>
+                    </div>
+                    <ul id="transactionList" class="divide-y divide-zinc-800/40 max-h-[400px] overflow-y-auto"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            salary: parseFloat(localStorage.getItem('salary_dev')) || 0,
+            transactions: JSON.parse(localStorage.getItem('tx_dev')) || []
+        };
+
+        let myChart;
+
+        function init() {
+            lucide.createIcons();
+            document.getElementById('salaryInput').value = state.salary || '';
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            state.salary = parseFloat(document.getElementById('salaryInput').value) || 0;
+            saveState();
+
+            const totals = state.transactions.reduce((acc, t) => {
+                acc[t.category] += t.value;
+                acc.total += t.value;
+                return acc;
+            }, { essential: 0, leisure: 0, investment: 0, total: 0 });
+
+            const balance = state.salary - totals.total;
+            
+            // UI Updates
+            const balEl = document.getElementById('totalBalance');
+            const balCard = document.getElementById('balanceCard');
+            balEl.innerText = formatCurrency(balance);
+            
+            // Dynamic Coloring
+            if(balance > 0) {
+                balCard.className = "glass-card p-6 flex flex-col justify-between min-h-[120px] balance-card-positive";
+                balEl.className = "text-3xl font-bold mono mt-2 text-emerald-400 tracking-tighter";
+            } else if(balance < 0) {
+                balCard.className = "glass-card p-6 flex flex-col justify-between min-h-[120px] balance-card-negative";
+                balEl.className = "text-3xl font-bold mono mt-2 text-red-400 tracking-tighter";
+            } else {
+                balCard.className = "glass-card p-6 flex flex-col justify-between min-h-[120px]";
+                balEl.className = "text-3xl font-bold mono mt-2 text-white tracking-tighter";
+            }
+
+            document.getElementById('totalSpent').innerText = formatCurrency(totals.total);
+            document.getElementById('tx-count').innerText = `${state.transactions.length} registros`;
+
+            renderProgressBars(totals);
+            renderList();
+            renderChart(totals);
+        }
+
+        function renderChart(totals) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const legendContainer = document.getElementById('chart-legend');
+            if (myChart) myChart.destroy();
+            
+            const free = Math.max(0, state.salary - totals.total);
+            const dataValues = [totals.essential, totals.leisure, totals.investment, free];
+            const colors = ['#6366f1', '#f4f4f5', '#10b981', 'rgba(255,255,255,0.05)'];
+            const labels = ['Essencial', 'Lazer', 'Invest.', 'Livre'];
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: colors,
+                        borderWidth: 0,
+                        hoverOffset: 2
+                    }]
+                },
+                options: { 
+                    cutout: '80%', 
+                    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                    maintainAspectRatio: false
+                }
+            });
+
+            legendContainer.innerHTML = labels.slice(0, 3).map((label, i) => `
+                <div class="flex justify-between items-center text-[10px]">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background: ${colors[i]}"></span>
+                        <span class="text-zinc-500">${label}</span>
+                    </div>
+                    <span class="mono text-zinc-300">${((dataValues[i] / (state.salary || 1)) * 100).toFixed(0)}%</span>
+                </div>
+            `).join('');
+        }
+
+        function renderProgressBars(totals) {
+            const container = document.getElementById('progress-bars');
+            const configs = [
+                { label: 'Essenciais', key: 'essential', target: 0.5, color: 'bg-indigo-500' },
+                { label: 'Lazer', key: 'leisure', target: 0.3, color: 'bg-zinc-200' },
+                { label: 'Investimentos', key: 'investment', target: 0.2, color: 'bg-emerald-500' }
+            ];
+
+            container.innerHTML = configs.map(c => {
+                const limit = state.salary * c.target;
+                const percent = limit > 0 ? Math.min((totals[c.key] / limit) * 100, 100) : 0;
+                const isOver = totals[c.key] > limit;
+
+                return `
+                    <div>
+                        <div class="flex justify-between items-end mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-zinc-200">${c.label}</span>
+                                <span class="text-[9px] text-zinc-500 font-mono bg-zinc-800 px-1.5 py-0.5 rounded border border-white/5">${c.target*100}% META</span>
+                            </div>
+                            <span class="text-xs mono ${isOver ? 'text-red-400 font-bold' : 'text-zinc-400'}">
+                                ${formatCurrency(totals[c.key])} <span class="text-zinc-600">/ ${formatCurrency(limit)}</span>
+                            </span>
+                        </div>
+                        <div class="w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden border border-white/5">
+                            <div class="${isOver ? 'bg-red-500' : c.color} h-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(0,0,0,0.5)]" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addTransaction() {
+            const desc = document.getElementById('descInput').value;
+            const val = parseFloat(document.getElementById('valueInput').value);
+            const cat = document.getElementById('categoryInput').value;
+
+            if (!desc || isNaN(val)) return; 
+
+            state.transactions.unshift({ 
+                id: Date.now(), desc, value: val, category: cat, 
+                date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) 
+            });
+            
+            document.getElementById('descInput').value = '';
+            document.getElementById('valueInput').value = '';
+            updateDashboard();
+        }
+
+        function renderList() {
+            const list = document.getElementById('transactionList');
+            if (state.transactions.length === 0) {
+                list.innerHTML = `<div class="py-12 text-center text-zinc-600 text-xs">Nenhuma transação efetuada</div>`;
+                return;
+            }
+            
+            list.innerHTML = state.transactions.map((t, i) => `
+                <li class="tx-item p-4 flex justify-between items-center hover:bg-white/[0.01] transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl border border-white/5 bg-zinc-900 flex items-center justify-center">
+                            <i data-lucide="${t.category === 'essential' ? 'zap' : t.category === 'leisure' ? 'coffee' : 'trending-up'}" class="w-4 h-4 text-zinc-500 group-hover:text-indigo-400 transition-colors"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-zinc-200">${t.desc}</p>
+                            <p class="text-[10px] text-zinc-500 uppercase font-mono tracking-tighter">${t.date} • ${t.category}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="mono text-sm font-bold text-zinc-300">R$ ${t.value.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        <button onclick="deleteTx(${t.id})" class="opacity-0 group-hover:opacity-100 p-2 text-zinc-600 hover:text-red-400 transition-all">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </li>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        const formatCurrency = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+        const saveState = () => {
+            localStorage.setItem('salary_dev', state.salary);
+            localStorage.setItem('tx_dev', JSON.stringify(state.transactions));
+        };
+        const deleteTx = (id) => { state.transactions = state.transactions.filter(t => t.id !== id); updateDashboard(); };
+        const resetAll = () => { if(confirm("Resetar todos os dados?")) { localStorage.clear(); location.reload(); } };
+        const exportData = () => {
+            const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `finance_export.json`;
+            a.click();
+        };
+
+        window.onload = init;
+    </script>
+</body>
+</html>
